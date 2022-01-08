@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xuniverse.front.community.XuniverseCommunityMapper">
+	<select id="getPostList" parameterType="java.util.HashMap" resultType="com.xuniverse.front.community.CommunityBoardVo">
+		SELECT
+			TCB.POST_SEQUENCE,
+		    HEX(TCB.POST_ID) AS POST_ID,
+		    TCB.TITLE,
+		    <!-- TCB.CONTENT, -->
+		    TCB.WRITER_ID,
+		    (SELECT NICKNAME
+			FROM XUNIVERSE.TB_USER
+			WHERE USER_ID = TCB.WRITER_ID) AS NICKNAME,
+		    CASE
+		    	WHEN DATE_FORMAT(TCB.WRITE_DATE,'%Y%m%d') = DATE_FORMAT(NOW(),'%Y%m%d')
+			    THEN DATE_FORMAT(TCB.WRITE_DATE,'%H:%i')
+			    ELSE DATE_FORMAT(TCB.WRITE_DATE,'%Y.%m.%d.')
+		    END AS WRITE_DATE,
+		    TCB.MODITY_DATE,
+		    TCB.READ_COUNT,
+		    TCB.DELETE_FLAG
+		FROM XUNIVERSE.TB_COMMUNITY_BOARD TCB
+		WHERE DELETE_FLAG = 0
+		ORDER BY TCB.POST_SEQUENCE DESC
+		LIMIT #{pagination.startIndex}, #{pagination.pageSize}
+	</select>
+
+	<select id="getPostCount" resultType="java.lang.Integer">
+		SELECT COUNT(1)
+		FROM XUNIVERSE.TB_COMMUNITY_BOARD TCB
+		WHERE DELETE_FLAG = 0
+	</select>
+
+	<select id="getPostById" resultType="com.xuniverse.front.community.CommunityBoardVo">
+		SELECT
+			TCB.POST_SEQUENCE,
+		    HEX(TCB.POST_ID) AS POST_ID,
+		    TCB.TITLE,
+		    TCB.CONTENT,
+		    TCB.WRITER_ID,
+		    (SELECT NICKNAME
+			FROM XUNIVERSE.TB_USER
+			WHERE USER_ID = TCB.WRITER_ID) AS NICKNAME,
+		    <!-- CASE
+		    	WHEN DATE_FORMAT(TCB.WRITE_DATE,'%Y%m%d') = DATE_FORMAT(NOW(),'%Y%m%d')
+			    THEN DATE_FORMAT(TCB.WRITE_DATE,'%H:%i')
+			    ELSE DATE_FORMAT(TCB.WRITE_DATE,'%Y.%m.%d.')
+		    END AS WRITE_DATE, -->
+		    DATE_FORMAT(TCB.WRITE_DATE, '%Y.%m.%d. %H:%i') AS WRITE_DATE,
+		    TCB.MODITY_DATE,
+		    TCB.READ_COUNT,
+		    TCB.DELETE_FLAG
+		FROM XUNIVERSE.TB_COMMUNITY_BOARD TCB
+		WHERE DELETE_FLAG = 0
+		AND HEX(TCB.POST_ID) = #{postId}
+	</select>
+
+	<select id="getPostReplyById" resultType="com.xuniverse.front.community.PostViewReplyVo">
+		SELECT
+			HEX(TCR.REPLY_ID) AS REPLY_ID,
+			HEX(TCR.POST_ID) AS POST_ID,
+			TCR.POST_SEQUENCE AS POST_SEQUENCE,
+			TCR.BUNDLE_ID,
+			HEX(TCR.UPPER_REPLY_ID) AS UPPER_REPLY_ID,
+			(SELECT USER_ID
+			FROM XUNIVERSE.TB_USER TU
+			WHERE USER_ID = (
+				SELECT TCR2.WRITER_ID
+				FROM XUNIVERSE.TB_COMMUNITY_REPLY TCR2
+				WHERE TCR2.REPLY_ID = TCR.UPPER_REPLY_ID
+				LIMIT 0,1)) AS UPPER_WRITER_ID,
+			(SELECT NICKNAME
+			FROM XUNIVERSE.TB_USER TU
+			WHERE USER_ID = (
+				SELECT TCR2.WRITER_ID
+				FROM XUNIVERSE.TB_COMMUNITY_REPLY TCR2
+				WHERE TCR2.REPLY_ID = TCR.UPPER_REPLY_ID
+				LIMIT 0,1)) AS UPPER_WRITER_NICKNAME,
+			TCR.REPLY_SEQUENCE_BY_POST,
+			TCR.CONTENT,
+			<!-- REPLACE(TCR.CONTENT, '\n', '<![CDATA[ <br/> ]]>') AS CONTENT, -->
+			TCR.RESIZED_IMAGE,
+			TCR.WRITER_ID,
+			(SELECT NICKNAME
+			FROM XUNIVERSE.TB_USER
+			WHERE USER_ID = TCR.WRITER_ID) AS NICKNAME,
+			DATE_FORMAT(TCR.WRITE_DATE,'%Y.%m.%d. %H:%i') AS WRITE_DATE,
+			TCR.MODITY_DATE,
+			TCR.DELETE_FLAG
+		FROM XUNIVERSE.TB_COMMUNITY_REPLY TCR
+		WHERE HEX(TCR.POST_ID) = #{postId}
+		AND DELETE_FLAG = 0
+		ORDER BY
+			TCR.BUNDLE_ID ASC,
+			REPLY_SEQUENCE_BY_POST ASC
+	</select>
+
+	<update id="deletePostById">
+		UPDATE XUNIVERSE.TB_COMMUNITY_BOARD SET
+			DELETE_FLAG = 1
+		WHERE HEX(POST_ID) = #{postId}
+	</update>
+
+	<insert id="registerReply">
+		INSERT INTO XUNIVERSE.TB_COMMUNITY_REPLY (
+			REPLY_ID,
+			POST_ID,
+			POST_SEQUENCE,
+			BUNDLE_ID,
+			UPPER_REPLY_ID,
+
+			REPLY_SEQUENCE_BY_POST,
+			CONTENT,
+			ORIGINAL_IMAGE,
+			RESIZED_IMAGE,
+			WRITER_ID,
+			WRITE_DATE
+		) VALUES (
+			UNHEX(REPLACE(UUID(),'-','')),
+			UNHEX(#{postId}),
+			(SELECT
+				POST_SEQUENCE
+			FROM XUNIVERSE.TB_COMMUNITY_BOARD
+			WHERE HEX(POST_ID) = #{postId}),
+			(SELECT
+				IFNULL(MAX(BUNDLE_ID)+1,1)
+			FROM XUNIVERSE.TB_COMMUNITY_REPLY TCR
+			WHERE HEX(POST_ID) = #{postId}),
+			NULL,
+
+			(SELECT
+				IFNULL(MAX(REPLY_SEQUENCE_BY_POST)+1,1)
+			FROM XUNIVERSE.TB_COMMUNITY_REPLY TCR
+			WHERE HEX(POST_ID) = #{postId}),
+			#{reply},
+			#{originalImage},
+			#{resizedImage},
+			UNHEX(#{userId}),
+			NOW()
+		)
+	</insert>
+
+	<insert id="registerReReply">
+		INSERT INTO XUNIVERSE.TB_COMMUNITY_REPLY (
+			REPLY_ID,
+			POST_ID,
+			POST_SEQUENCE,
+			BUNDLE_ID,
+			UPPER_REPLY_ID,
+
+			REPLY_SEQUENCE_BY_POST,
+			CONTENT,
+			ORIGINAL_IMAGE,
+			RESIZED_IMAGE,
+			WRITER_ID,
+			WRITE_DATE
+		) VALUES (
+			UNHEX(REPLACE(UUID(),'-','')),
+			UNHEX(#{postId}),
+			(SELECT
+				POST_SEQUENCE
+			FROM XUNIVERSE.TB_COMMUNITY_BOARD
+			WHERE HEX(POST_ID) = #{postId}),
+			#{bundleId},
+			UNHEX(#{upperReplyId}),
+
+			(SELECT
+				IFNULL(MAX(REPLY_SEQUENCE_BY_POST)+1,1)
+			FROM XUNIVERSE.TB_COMMUNITY_REPLY TCR
+			WHERE HEX(POST_ID) = #{postId}),
+			#{content},
+			#{originalImage},
+			#{resizedImage},
+			UNHEX(#{userId}),
+			NOW()
+		)
+	</insert>
+
+	<update id="modifyReReply">
+		UPDATE XUNIVERSE.TB_COMMUNITY_REPLY SET
+			CONTENT = #{content},
+			ORIGINAL_IMAGE = #{originalImage},
+			RESIZED_IMAGE = #{resizedImage},
+			MODITY_DATE = NOW()
+		WHERE REPLY_ID = UNHEX(#{replyId})
+	</update>
+
+	<update id="deleteReReply">
+		UPDATE XUNIVERSE.TB_COMMUNITY_REPLY SET
+			DELETE_FLAG = 1,
+			MODITY_DATE = NOW()
+		WHERE REPLY_ID = UNHEX(#{replyId})
+	</update>
+
+	<insert id="registerWirtePost">
+		INSERT INTO XUNIVERSE.TB_COMMUNITY_BOARD  (
+			POST_ID,
+			CATEGORY_ID,
+			TITLE,
+			CONTENT,
+			WRITER_ID,
+			WRITE_DATE
+		) VALUES (
+			UNHEX(REPLACE(UUID(),'-','')),
+			NULL,
+			#{title},
+			#{content},
+			UNHEX(#{userId}),
+			NOW()
+		)
+	</insert>
+
+	<update id="modifyPostById" parameterType="java.util.HashMap">
+		UPDATE XUNIVERSE.TB_COMMUNITY_BOARD SET
+			TITLE = #{title},
+			CONTENT = #{content},
+			MODITY_DATE = NOW()
+		WHERE POST_ID = UNHEX(#{postId})
+	</update>
+</mapper>

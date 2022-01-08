@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.xuniverse.batch.XuniverseBatchMapper">
+
+	<select id="selectLegalDongCodeList" resultType="com.xuniverse.batch.LegalDongCodeVo">
+		SELECT DISTINCT TLDC .LEGAL_DONG_CODE_FRONT
+		FROM XUNIVERSE.TB_LEGAL_DONG_CODE TLDC
+		WHERE TLDC .CITY_DIVISION_CODE = '00005'
+	</select>
+
+	<insert id="insertAptRealTransactionDetail" parameterType="com.xuniverse.general.AptRealTransactionDetailVo">
+		INSERT INTO XUNIVERSE.TB_APT_REAL_TRANSACTION_DETAIL (
+			TRANSACTION_ID
+			,TRANSACTION_AMOUNT
+			,CONSTRUCTION_YEAE
+			,DEAL_YEAR
+			,ROAD_NAME
+			,ROAD_NAME_BUILDING_MAIN_NUMBER
+			,ROAD_NAME_BUILDING_SUB_NUMBER
+			,ROAD_NAME_DIVISION_CODE
+			,ROAD_NAME_SERIAL_NUMBER_CODE
+			,ROAD_NAME_GROUND_BASEMENT_CODE
+			,ROAD_NAME_CODE
+			,LEGAL_DONG
+			,LEGAL_DONG_MAIN_CODE
+			,LEGAL_DONG_SUB_CODE
+			,LEGAL_DONG_DIVISION_CODE1
+			,LEGAL_DONG_DIVISION_CODE2
+			,LEGAL_DONG_LOT_NUMBER_CODE
+			,APARTMENT_NAME
+			,DEAL_MONTH
+			,DEAL_DAY
+			,EXCLUSIVE_AREA
+			,LOT_NUMBER
+			,REGION_CODE
+			,FLOOR
+		) VALUES (
+			#{transactionId},
+			#{transactionAmount},
+			#{constructionYeae},
+			#{dealYear},
+			#{roadName},
+			#{roadNameBuildingMainNumber},
+			#{roadNameBuildingSubNumber},
+			#{roadNameDivisionCode},
+			#{roadNameSerialNumberCode},
+			#{roadNameGroundBasementCode},
+			#{roadNameCode},
+			#{legalDong},
+			#{legalDongMainCode},
+			#{legalDongSubCode},
+			#{legalDongDivisionCode1},
+			#{legalDongDivisionCode2},
+			#{legalDongLotNumberCode},
+			#{apartmentName},
+			#{dealMonth},
+			#{dealDay},
+			#{exclusiveArea},
+			#{lotNumber},
+			#{regionCode},
+			#{floor}
+		)
+	</insert>
+
+
+	<insert id="insertAptRealTransactionDetail_forEach" parameterType="java.util.List">
+		INSERT INTO XUNIVERSE.TB_APT_REAL_TRANSACTION_DETAIL (
+			TRANSACTION_ID
+			,TRANSACTION_AMOUNT
+			,CONSTRUCTION_YEAE
+			,DEAL_YEAR
+			,ROAD_NAME
+			,ROAD_NAME_BUILDING_MAIN_NUMBER
+			,ROAD_NAME_BUILDING_SUB_NUMBER
+			,ROAD_NAME_DIVISION_CODE
+			,ROAD_NAME_SERIAL_NUMBER_CODE
+			,ROAD_NAME_GROUND_BASEMENT_CODE
+			,ROAD_NAME_CODE
+			,LEGAL_DONG
+			,LEGAL_DONG_MAIN_CODE
+			,LEGAL_DONG_SUB_CODE
+			,LEGAL_DONG_DIVISION_CODE1
+			,LEGAL_DONG_DIVISION_CODE2
+			,LEGAL_DONG_LOT_NUMBER_CODE
+			,APARTMENT_NAME
+			,DEAL_MONTH
+			,DEAL_DAY
+			,EXCLUSIVE_AREA
+			,LOT_NUMBER
+			,REGION_CODE
+			,FLOOR
+		) VALUES
+	    <foreach collection="list" item="item" separator=" , " >
+	        (
+			#{item.transactionId},
+			#{item.transactionAmount},
+			#{item.constructionYeae},
+			#{item.dealYear},
+			#{item.roadName},
+			#{item.roadNameBuildingMainNumber},
+			#{item.roadNameBuildingSubNumber},
+			#{item.roadNameDivisionCode},
+			#{item.roadNameSerialNumberCode},
+			#{item.roadNameGroundBasementCode},
+			#{item.roadNameCode},
+			#{item.legalDong},
+			#{item.legalDongMainCode},
+			#{item.legalDongSubCode},
+			#{item.legalDongDivisionCode1},
+			#{item.legalDongDivisionCode2},
+			#{item.legalDongLotNumberCode},
+			#{item.apartmentName},
+			#{item.dealMonth},
+			#{item.dealDay},
+			#{item.exclusiveArea},
+			#{item.lotNumber},
+			#{item.regionCode},
+			#{item.floor}
+		)
+	    </foreach>
+	</insert>
+
+	<select id="getSearchGeocodeTarget" resultType="com.xuniverse.commons.GeocodeXyVo">
+<!-- 		SELECT
+            TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV1,
+            TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV2,
+            TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV3,
+            TMRTDAT .ROAD_NAME
+		FROM XUNIVERSE.TB_MOL_REAL_TRANSACTION_DATA_APT_TRADE TMRTDAT
+
+			'강남구', '서초구', '강동구', '강북구', '강서구', '관악구', '광진구', '구로구'
+
+		WHERE TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV1 ='서울특별시'
+		AND TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV2 IN ('강동구', '강북구', '강서구', '관악구', '광진구', '구로구')
+		AND TMRTDAT .X IS NULL
+		AND TMRTDAT .Y IS NULL
+		GROUP BY
+            TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV1,
+            TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV2,
+            TMRTDAT .ADMINISTRATIVE_DISTRICT_LEV3,
+            TMRTDAT .ROAD_NAME -->
+SELECT TMRTDAT .administrative_district_lev1,
+       TMRTDAT .administrative_district_lev2,
+       TMRTDAT .administrative_district_lev3,
+       TMRTDAT .road_name
+FROM   xuniverse.tb_mol_real_transaction_data_apt_trade TMRTDAT
+WHERE  TMRTDAT .administrative_district_lev1 = '서울특별시'
+       AND NOT EXISTS (SELECT *
+                       FROM   xuniverse.tb_geocode_xy_apt tgxa
+                       WHERE  TMRTDAT .administrative_district_lev1 =
+                              tgxa .administrative_district_lev1
+                              AND TMRTDAT .administrative_district_lev2 =
+                                  tgxa .administrative_district_lev2
+                              AND TMRTDAT .administrative_district_lev3 =
+                                  tgxa .administrative_district_lev3
+                              AND TMRTDAT .road_name = tgxa .road_name)
+GROUP  BY TMRTDAT .administrative_district_lev1,
+          TMRTDAT .administrative_district_lev2,
+          TMRTDAT .administrative_district_lev3,
+          TMRTDAT .road_name
+	</select>
+
+	<insert id="insertGeocodeXY" parameterType="com.xuniverse.commons.GeocodeXyVo">
+		INSERT INTO XUNIVERSE.TB_GEOCODE_XY_APT VALUES (
+			#{administrativeDistrictLev1},
+			#{administrativeDistrictLev2},
+			#{administrativeDistrictLev3},
+			#{roadName},
+			#{x},
+			#{y}
+		)
+		ON DUPLICATE KEY
+		UPDATE
+			ADMINISTRATIVE_DISTRICT_LEV1 = #{administrativeDistrictLev1},
+			ADMINISTRATIVE_DISTRICT_LEV2 = #{administrativeDistrictLev2},
+			ADMINISTRATIVE_DISTRICT_LEV3 = #{administrativeDistrictLev3},
+			ROAD_NAME = #{roadName},
+			X = #{x},
+			Y = #{y}
+
+		<!-- INSERT INTO XUNIVERSE.TB_GEOCODE_XY_APT (
+			ADMINISTRATIVE_DISTRICT_LEV1,
+			ADMINISTRATIVE_DISTRICT_LEV2,
+			ADMINISTRATIVE_DISTRICT_LEV3,
+			ROAD_NAME,
+			X,
+			Y
+		) VALUES (
+			#{administrativeDistrictLev1},
+			#{administrativeDistrictLev2},
+			#{administrativeDistrictLev3},
+			#{roadName},
+			#{x},
+			#{y}
+		)
+		WHERE NOT EXISTS (
+			SELECT ADMINISTRATIVE_DISTRICT_LEV1
+			FROM XUNIVERSE.TB_GEOCODE_XY_APT
+		    WHERE ADMINISTRATIVE_DISTRICT_LEV1 = #{administrativeDistrictLev1}
+			AND ADMINISTRATIVE_DISTRICT_LEV2 = #{administrativeDistrictLev2}
+			AND ADMINISTRATIVE_DISTRICT_LEV3 = #{administrativeDistrictLev3}
+			AND ROAD_NAME = #{roadName}
+			AND X = #{x}
+			AND Y = #{y}
+	    )
+		LIMIT 1 -->
+	</insert>
+</mapper>
